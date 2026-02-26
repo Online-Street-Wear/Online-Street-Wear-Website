@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
-import { X, Truck, Shield, CreditCard, Loader2 } from "lucide-react";
+import { X, Truck, Shield, Loader2 } from "lucide-react";
+import { useAuth } from "@getmocha/users-service/react";
 import Navbar from "@/react-app/components/Navbar";
 import Footer from "@/react-app/components/Footer";
 import { useCart } from "@/react-app/contexts/CartContext";
@@ -12,22 +13,80 @@ import {
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { items, removeFromCart, getItemCount, getTotal, clearCart } = useCart();
+  const { user } = useAuth();
+  const { items, removeFromCart, getItemCount, getTotal } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingProvince, setShippingProvince] = useState(SHIPPING_PROVINCE_OPTIONS[0].value);
+  const [email, setEmail] = useState("");
+  const [paymentError, setPaymentError] = useState("");
 
   const subtotal = getTotal();
   const cartItemCount = getItemCount();
   const shippingFee = getShippingFee(subtotal, shippingProvince);
   const orderTotal = subtotal + shippingFee;
 
-  const handleCheckout = () => {
+  useEffect(() => {
+    if (user?.email) {
+      setEmail((currentEmail) => currentEmail || user.email);
+    }
+  }, [user]);
+
+  const handleCheckout = async () => {
+    const customerEmail = email.trim() || user?.email?.trim() || "";
+
+    if (!customerEmail) {
+      setPaymentError("Please enter your email before proceeding to PayFast.");
+      return;
+    }
+
+    setPaymentError("");
     setIsProcessing(true);
-    setTimeout(() => {
-      clearCart();
+
+    try {
+      const response = await fetch("/api/payments/create-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: orderTotal.toFixed(2),
+          item_name: `Online Streetwear Order (${cartItemCount} item${cartItemCount !== 1 ? "s" : ""})`,
+          email: customerEmail,
+          name_first: user?.google_user_data?.given_name || "Customer",
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || "Could not start PayFast checkout.");
+      }
+
+      const paymentUrl = result?.payment_url;
+      const paymentData = result?.data;
+
+      if (!paymentUrl || !paymentData || typeof paymentData !== "object") {
+        throw new Error("Invalid PayFast response.");
+      }
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = paymentUrl;
+
+      Object.entries(paymentData).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = String(value);
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not start PayFast checkout.";
+      setPaymentError(message);
       setIsProcessing(false);
-      navigate("/cart?success=true");
-    }, 1500);
+    }
   };
 
   if (items.length === 0) {
@@ -134,45 +193,23 @@ export default function Checkout() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                  <button className="p-4 border border-border rounded-lg bg-background hover:border-red-500 transition flex items-center justify-center gap-3">
-                    <CreditCard className="w-5 h-5" />
-                    <span className="font-medium">Card</span>
-                  </button>
-                  <button className="p-4 border border-border rounded-lg bg-background hover:border-red-500 transition flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 bg-yellow-500 rounded" />
-                    <span className="font-medium">PayPal</span>
-                  </button>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-red-500/50 focus:border-red-500 outline-none"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    You will be redirected to PayFast to complete payment securely.
+                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Card Number</label>
-                    <input
-                      type="text"
-                      placeholder="1234 5678 9012 3456"
-                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-red-500/50 focus:border-red-500 outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Expiry Date</label>
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-red-500/50 focus:border-red-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">CVV</label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-red-500/50 focus:border-red-500 outline-none"
-                      />
-                    </div>
-                  </div>
+                <div className="p-4 border border-border rounded-lg bg-background flex items-center justify-center gap-3">
+                  <div className="w-5 h-5 rounded bg-red-500" />
+                  <span className="font-medium">PayFast</span>
                 </div>
               </section>
             </div>
@@ -219,12 +256,18 @@ export default function Checkout() {
                     {isProcessing ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Processing...
+                        Redirecting to PayFast...
                       </>
                     ) : (
-                      "Complete Purchase"
+                      "Pay with PayFast"
                     )}
                   </button>
+
+                  {paymentError && (
+                    <p className="text-sm text-red-500 mt-3">
+                      {paymentError}
+                    </p>
+                  )}
 
                   <button
                     onClick={() => navigate("/products")}
@@ -279,8 +322,8 @@ export default function Checkout() {
             <div className="w-12 h-12 mx-auto mb-4 bg-red-500/10 rounded-full flex items-center justify-center">
               <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
             </div>
-            <h3 className="text-lg font-bold mb-2">Processing Payment</h3>
-            <p className="text-sm text-muted-foreground">Please wait while we secure your order...</p>
+            <h3 className="text-lg font-bold mb-2">Redirecting to PayFast</h3>
+            <p className="text-sm text-muted-foreground">Please wait while we prepare your secure payment...</p>
           </div>
         </div>
       )}

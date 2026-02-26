@@ -1,0 +1,4 @@
+DROP INDEX idx_payfast_itn_events_m_payment_id;
+DROP INDEX idx_payfast_itn_events_pf_payment_id;
+DROP INDEX idx_payfast_itn_events_created_at;
+DROP TABLE payfast_itn_events;

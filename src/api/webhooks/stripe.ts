@@ -16,8 +16,9 @@ app.post('/', async (c) => {
         sig,
         c.env.STRIPE_WEBHOOK_SECRET
       );
-    } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown signature verification error';
+      console.error('Webhook signature verification failed:', message);
       return c.text('Invalid signature', 400);
     }
 
@@ -29,7 +30,7 @@ app.post('/', async (c) => {
     }
 
     return c.text('ok', 200);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Webhook error:', error);
     return c.text('Webhook error', 500);
   }

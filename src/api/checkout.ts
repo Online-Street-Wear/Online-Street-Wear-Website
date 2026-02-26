@@ -3,27 +3,48 @@ import Stripe from 'stripe';
 
 const app = new Hono<{ Bindings: Env }>();
 
+interface CheckoutItem {
+  name: string;
+  image: string;
+  price: string | number;
+  quantity: number;
+}
+
+interface CheckoutRequestBody {
+  items?: CheckoutItem[];
+}
+
 app.post('/', async (c) => {
   try {
     const stripe = new Stripe(c.env.STRIPE_SECRET_KEY);
-    const { items } = await c.req.json();
+    const { items } = await c.req.json<CheckoutRequestBody>();
 
-    if (!items || items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       return c.json({ error: 'Cart is empty' }, 400);
     }
 
-    // Create line items for Stripe
-    const lineItems = items.map((item: any) => ({
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: item.name,
-          images: [item.image],
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+    for (const item of items) {
+      const unitAmount = Math.round(Number(item.price) * 100);
+      const hasValidQuantity = Number.isInteger(item.quantity) && item.quantity > 0;
+
+      if (!item.name || !item.image || !Number.isFinite(unitAmount) || unitAmount <= 0 || !hasValidQuantity) {
+        return c.json({ error: 'Invalid cart item data' }, 400);
+      }
+
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: item.name,
+            images: [item.image],
+          },
+          unit_amount: unitAmount,
         },
-        unit_amount: Math.round(parseFloat(item.price) * 100), // Convert to cents
-      },
-      quantity: item.quantity,
-    }));
+        quantity: item.quantity,
+      });
+    }
 
     // Get the origin for success/cancel URLs
     const origin = new URL(c.req.url).origin;
@@ -32,14 +53,15 @@ app.post('/', async (c) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
-      success_url: `R{origin}/cart?success=true`,
-      cancel_url: `R{origin}/cart?canceled=true`,
+      success_url: `${origin}/cart?success=true`,
+      cancel_url: `${origin}/cart?canceled=true`,
     });
 
     return c.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to create checkout session';
     console.error('Checkout error:', error);
-    return c.json({ error: error.message || 'Failed to create checkout session' }, 500);
+    return c.json({ error: message }, 500);
   }
 });
 

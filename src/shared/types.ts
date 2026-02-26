@@ -1,5 +1,3 @@
-import z from "zod";
-
 /**
  * Types shared between the client and server go here.
  *
@@ -13,3 +11,4 @@ import z from "zod";
  *
  * export type TodoType = z.infer<typeof TodoSchema>;
  */
+export {};

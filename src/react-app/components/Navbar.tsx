@@ -2,8 +2,18 @@ import { Menu, ShoppingBag, X, User, LogOut, Shield, Sun, Moon } from 'lucide-re
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '@getmocha/users-service/react';
+import type { MochaUser } from '@getmocha/users-service/shared';
 import { useCart } from '@/react-app/contexts/CartContext';
 import { useTheme } from '@/react-app/contexts/ThemeContext';
+
+const getUserRole = (user: MochaUser | null): string => {
+  if (!user || !('role' in user)) {
+    return 'User';
+  }
+
+  const role = user.role;
+  return typeof role === 'string' && role.trim().length > 0 ? role : 'User';
+};
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -14,6 +24,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
   const { theme, toggleTheme } = useTheme();
+  const userRole = getUserRole(user);
 
   const handleLogout = async () => {
     await logout();
@@ -80,7 +91,7 @@ export default function Navbar() {
                       <p className="text-xs text-gray-400 mt-1">{user.email}</p>
                       <div className="flex items-center gap-1 mt-2">
                         <Shield className="w-3 h-3 text-purple-400" />
-                        <span className="text-xs text-purple-400 uppercase font-semibold">{(user as any).role || 'User'}</span>
+                        <span className="text-xs text-purple-400 uppercase font-semibold">{userRole}</span>
                       </div>
                     </div>
                     <button
@@ -144,7 +155,7 @@ export default function Navbar() {
                     <p className="text-sm font-medium text-white">{user.google_user_data.name}</p>
                     <div className="flex items-center gap-1 mt-1">
                       <Shield className="w-3 h-3 text-purple-400" />
-                      <span className="text-xs text-purple-400 uppercase font-semibold">{(user as any).role || 'User'}</span>
+                      <span className="text-xs text-purple-400 uppercase font-semibold">{userRole}</span>
                     </div>
                   </div>
                 </div>

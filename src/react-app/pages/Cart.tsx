@@ -1,4 +1,4 @@
-import { ShoppingBag, Trash2, Minus, Plus, Loader2, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Trash2, Minus, Plus, Loader2 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 import Navbar from '@/react-app/components/Navbar';
@@ -20,6 +20,14 @@ export default function Cart() {
       setTimeout(() => {
         window.history.replaceState({}, '', '/cart');
       }, 100);
+    }
+
+    // Check if customer canceled payment at PayFast
+    if (searchParams.get('canceled') === 'true') {
+      setErrorMessage('Payment was canceled. Your cart is still available for checkout.');
+      setTimeout(() => {
+        window.history.replaceState({}, '', '/cart');
+      }, 3000);
     }
     
     // Check for checkout error

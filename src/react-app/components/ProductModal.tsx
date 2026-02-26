@@ -94,7 +94,7 @@ export default function ProductModal({ image, name, price, category, onClose }: 
             <div className="space-y-3 pb-6 sm:pb-0">
               <button 
                 onClick={handleAddToCart}
-                className={`w-full R{added ? 'bg-green-500' : 'bg-red-500 hover:bg-red-600'} text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition flex items-center justify-center gap-2 text-sm sm:text-base`}
+                className={`w-full ${added ? 'bg-green-500' : 'bg-red-500 hover:bg-red-600'} text-white font-semibold py-3 sm:py-4 px-6 rounded-lg transition flex items-center justify-center gap-2 text-sm sm:text-base`}
               >
                 {added ? (
                   <>

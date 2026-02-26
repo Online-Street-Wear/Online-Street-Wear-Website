@@ -36,7 +36,7 @@ export default function NewsletterForm() {
         setStatus('error');
         setMessage(data.message || 'Failed to subscribe');
       }
-    } catch (error) {
+    } catch {
       setStatus('error');
       setMessage('An error occurred. Please try again.');
     }

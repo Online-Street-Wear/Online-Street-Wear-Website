@@ -11,12 +11,14 @@ import {
 import { getCookie, setCookie } from "hono/cookie";
 import checkout from "../api/checkout";
 import stripeWebhook from "../api/webhooks/stripe";
+import payments from "../api/payments";
 
 const app = new Hono<{ Bindings: Env }>();
 
 // Mount Stripe routes
 app.route("/api/checkout", checkout);
 app.route("/api/webhooks/stripe", stripeWebhook);
+app.route("/api/payments", payments);
 
 // Authentication endpoints
 app.get("/api/oauth/google/redirect_url", async (c) => {
@@ -116,8 +118,9 @@ app.post("/api/newsletter/subscribe", zValidator("json", subscribeSchema), async
       .run();
 
     return c.json({ success: true, message: "Successfully subscribed to newsletter!" });
-  } catch (error: any) {
-    if (error.message?.includes("UNIQUE constraint failed")) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("UNIQUE constraint failed")) {
       return c.json(
         { success: false, message: "This email is already subscribed." },
         400
