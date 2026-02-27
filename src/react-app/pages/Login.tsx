@@ -1,15 +1,44 @@
-import { useAuth } from "@getmocha/users-service/react";
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, LogIn, Mail, ShoppingBag, KeyRound, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/react-app/contexts/AuthContext";
 
 type LoginMethod = "google" | "email";
 
+function getFirebaseAuthMessage(error: unknown): string {
+  const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+
+  switch (code) {
+    case "auth/invalid-email":
+      return "That email address is not valid.";
+    case "auth/invalid-credential":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "Invalid email or password.";
+    case "auth/email-already-in-use":
+      return "This email is already registered. Sign in instead.";
+    case "auth/weak-password":
+      return "Use a stronger password (at least 6 characters).";
+    case "auth/popup-blocked":
+      return "Popup was blocked. Allow popups and try again.";
+    case "auth/popup-closed-by-user":
+      return "Google sign-in was closed before completion.";
+    case "auth/operation-not-allowed":
+      return "This sign-in method is not enabled in Firebase Authentication.";
+    case "auth/network-request-failed":
+      return "Network error. Check your internet connection and retry.";
+    default:
+      return "Sign-in failed. Please try again.";
+  }
+}
+
 export default function Login() {
-  const { user, isPending, redirectToLogin } = useAuth();
+  const { user, isPending, isConfigured, redirectToLogin, loginWithEmail, registerWithEmail } = useAuth();
   const navigate = useNavigate();
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("google");
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [isCreateAccount, setIsCreateAccount] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
@@ -21,6 +50,11 @@ export default function Login() {
   }, [user, isPending, navigate]);
 
   const handleGoogleLogin = async () => {
+    if (!isConfigured) {
+      setEmailMessage("Firebase is not configured yet. Add API key and app ID in .env.local.");
+      return;
+    }
+
     setEmailMessage("");
     setIsRedirecting(true);
 
@@ -28,22 +62,40 @@ export default function Login() {
       await redirectToLogin();
     } catch (error) {
       console.error("Google sign-in failed:", error);
-      setEmailMessage("Could not start Google sign-in. Please try again.");
+      setEmailMessage(getFirebaseAuthMessage(error));
+    } finally {
       setIsRedirecting(false);
     }
   };
 
-  const handleEmailSubmit = (event: FormEvent) => {
+  const handleEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
+
+    if (!isConfigured) {
+      setEmailMessage("Firebase is not configured yet. Add API key and app ID in .env.local.");
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setEmailMessage("Enter your email and password to continue.");
       return;
     }
 
-    setEmailMessage(
-      "Email login UI is ready, but your backend currently supports Google OAuth only. Use Google for now."
-    );
+    setEmailMessage("");
+    setIsEmailLoading(true);
+
+    try {
+      if (isCreateAccount) {
+        await registerWithEmail(email.trim(), password);
+      } else {
+        await loginWithEmail(email.trim(), password);
+      }
+    } catch (error) {
+      console.error("Email authentication failed:", error);
+      setEmailMessage(getFirebaseAuthMessage(error));
+    } finally {
+      setIsEmailLoading(false);
+    }
   };
 
   if (isPending) {
@@ -117,7 +169,10 @@ export default function Login() {
                 Google
               </button>
               <button
-                onClick={() => setLoginMethod("email")}
+                onClick={() => {
+                  setLoginMethod("email");
+                  setEmailMessage("");
+                }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
                   loginMethod === "email"
                     ? "bg-red-500 text-white"
@@ -132,7 +187,7 @@ export default function Login() {
               <div>
                 <button
                   onClick={handleGoogleLogin}
-                  disabled={isRedirecting}
+                  disabled={isRedirecting || !isConfigured}
                   className="w-full flex items-center justify-center gap-3 bg-red-500 hover:bg-red-600 disabled:bg-red-400 text-white font-semibold py-3.5 px-5 rounded-xl transition"
                 >
                   {isRedirecting ? (
@@ -145,7 +200,9 @@ export default function Login() {
                   )}
                 </button>
                 <p className="text-xs text-gray-400 text-center mt-3">
-                  Recommended for fastest sign-in.
+                  {isConfigured
+                    ? "Recommended for fastest sign-in."
+                    : "Complete Firebase Web SDK setup in .env.local to enable sign-in."}
                 </p>
               </div>
             ) : (
@@ -178,9 +235,20 @@ export default function Login() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3.5 px-5 rounded-xl transition"
+                  disabled={isEmailLoading || !isConfigured}
+                  className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-400 text-white font-semibold py-3.5 px-5 rounded-xl transition"
                 >
-                  Continue with Email
+                  {isEmailLoading ? "Please wait..." : isCreateAccount ? "Create Account" : "Continue with Email"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateAccount((current) => !current);
+                    setEmailMessage("");
+                  }}
+                  className="w-full text-sm text-gray-300 hover:text-white transition"
+                >
+                  {isCreateAccount ? "Already have an account? Sign in" : "Need an account? Create one"}
                 </button>
               </form>
             )}

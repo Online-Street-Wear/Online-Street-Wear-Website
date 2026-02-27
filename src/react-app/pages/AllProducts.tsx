@@ -3,10 +3,12 @@ import Navbar from '@/react-app/components/Navbar';
 import ProductCard from '@/react-app/components/ProductCard';
 import ProductModal from '@/react-app/components/ProductModal';
 import Footer from '@/react-app/components/Footer';
-import { allProducts, Product } from '@/react-app/data/products';
+import { Product } from '@/react-app/data/products';
+import { useProducts } from '@/react-app/hooks/useProducts';
 
 export default function AllProducts() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const { products, loading, error } = useProducts();
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -22,8 +24,10 @@ export default function AllProducts() {
             ALL PRODUCTS
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Browse the complete Online Streetwear collection. {allProducts.length} pieces of urban fashion crafted with passion.
+            Browse the complete Online Streetwear collection. {products.length} pieces of urban fashion crafted with passion.
           </p>
+          {loading && <p className="text-gray-500 text-sm mt-3">Loading products...</p>}
+          {error && <p className="text-gray-500 text-sm mt-3">{error}</p>}
         </div>
       </section>
 
@@ -31,9 +35,9 @@ export default function AllProducts() {
       <section className="pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {allProducts.map((product, index) => (
+            {products.map((product, index) => (
               <ProductCard 
-                key={index} 
+                key={product.id ?? `${product.name}-${index}`} 
                 {...product} 
                 onClick={() => setSelectedProduct(product)}
               />

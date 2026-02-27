@@ -1,19 +1,18 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
-import { AuthProvider } from "@getmocha/users-service/react";
+import { FirebaseAuthProvider } from "@/react-app/contexts/AuthContext";
 import { CartProvider } from "@/react-app/contexts/CartContext";
 import { ThemeProvider } from "@/react-app/contexts/ThemeContext";
 import HomePage from "@/react-app/pages/Home";
 import AllProducts from "@/react-app/pages/AllProducts";
 import Cart from "@/react-app/pages/Cart";
 import Login from "@/react-app/pages/Login";
-import AuthCallback from "@/react-app/pages/AuthCallback";
 import Checkout from "@/react-app/components/Checkout";
 
 
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
+      <FirebaseAuthProvider>
         <CartProvider>
           <Router>
             <Routes>
@@ -22,11 +21,10 @@ export default function App() {
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>
           </Router>
         </CartProvider>
-      </AuthProvider>
+      </FirebaseAuthProvider>
     </ThemeProvider>
   );
 }

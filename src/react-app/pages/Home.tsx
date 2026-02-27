@@ -6,10 +6,14 @@ import ProductCard from '@/react-app/components/ProductCard';
 import ProductModal from '@/react-app/components/ProductModal';
 import NewsletterForm from '@/react-app/components/NewsletterForm';
 import Footer from '@/react-app/components/Footer';
-import { featuredProducts, allProducts, Product } from '@/react-app/data/products';
+import { Product } from '@/react-app/data/products';
+import { useProducts } from '@/react-app/hooks/useProducts';
+import { productImage } from '@/react-app/lib/assets';
 
 export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const { products, loading, source } = useProducts();
+  const featuredProducts = products.slice(0, 10);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -20,7 +24,7 @@ export default function Home() {
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: 'url(https://019b23df-d065-7b60-a3d6-b66362facd83.mochausercontent.com/WhatsApp-Image-2025-12-16-at-15.12.18.jpeg)',
+            backgroundImage: `url(${productImage("WhatsApp-Image-2025-12-16-at-15.12.18.jpeg")})`,
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black" />
@@ -76,12 +80,16 @@ export default function Home() {
               FEATURED DROPS
             </h2>
             <p className="text-gray-400 text-lg">Curated pieces from our latest collection</p>
+            {loading && <p className="text-gray-500 text-sm mt-3">Loading products...</p>}
+            {!loading && source === 'fallback' && (
+              <p className="text-gray-500 text-sm mt-3">Showing local catalog while Firebase syncs.</p>
+            )}
           </div>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {featuredProducts.map((product, index) => (
               <ProductCard 
-                key={index} 
+                key={product.id ?? `${product.name}-${index}`} 
                 {...product} 
                 onClick={() => setSelectedProduct(product)}
               />
@@ -93,7 +101,7 @@ export default function Home() {
               to="/products"
               className="inline-flex items-center gap-2 px-8 py-4 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-black transition"
             >
-              View All {allProducts.length} Products
+              View All {products.length} Products
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -147,7 +155,7 @@ export default function Home() {
             <div className="relative">
               <div className="aspect-square rounded-lg overflow-hidden">
                 <img 
-                  src="https://019b23df-d065-7b60-a3d6-b66362facd83.mochausercontent.com/WhatsApp-Image-2025-12-16-at-15.12.17-(2).jpeg"
+                  src={productImage("WhatsApp-Image-2025-12-16-at-15.12.17-(2).jpeg")}
                   alt="Brand story"
                   className="w-full h-full object-cover"
                 />

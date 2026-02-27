@@ -1,19 +1,9 @@
 import { Menu, ShoppingBag, X, User, LogOut, Shield, Sun, Moon } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { useAuth } from '@getmocha/users-service/react';
-import type { MochaUser } from '@getmocha/users-service/shared';
+import { useAuth } from '@/react-app/contexts/AuthContext';
 import { useCart } from '@/react-app/contexts/CartContext';
 import { useTheme } from '@/react-app/contexts/ThemeContext';
-
-const getUserRole = (user: MochaUser | null): string => {
-  if (!user || !('role' in user)) {
-    return 'User';
-  }
-
-  const role = user.role;
-  return typeof role === 'string' && role.trim().length > 0 ? role : 'User';
-};
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -24,7 +14,9 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
   const { theme, toggleTheme } = useTheme();
-  const userRole = getUserRole(user);
+  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'User';
+  const firstName = displayName.split(' ')[0] || 'User';
+  const avatarUrl = user?.photoURL || '';
 
   const handleLogout = async () => {
     await logout();
@@ -72,26 +64,26 @@ export default function Navbar() {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition"
                 >
-                  {user.google_user_data.picture ? (
+                  {avatarUrl ? (
                     <img 
-                      src={user.google_user_data.picture} 
-                      alt={user.google_user_data.name || 'User'} 
+                      src={avatarUrl} 
+                      alt={displayName} 
                       className="w-6 h-6 rounded-full"
                     />
                   ) : (
                     <User className="w-5 h-5" />
                   )}
-                  <span className="text-sm font-medium">{user.google_user_data.given_name || 'User'}</span>
+                  <span className="text-sm font-medium">{firstName}</span>
                 </button>
 
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-black/95 backdrop-blur-lg rounded-xl shadow-2xl border border-white/10 overflow-hidden">
                     <div className="px-4 py-3 border-b border-white/10">
-                      <p className="text-sm font-medium text-white">{user.google_user_data.name}</p>
-                      <p className="text-xs text-gray-400 mt-1">{user.email}</p>
+                      <p className="text-sm font-medium text-white">{displayName}</p>
+                      <p className="text-xs text-gray-400 mt-1">{user.email || 'No email available'}</p>
                       <div className="flex items-center gap-1 mt-2">
                         <Shield className="w-3 h-3 text-purple-400" />
-                        <span className="text-xs text-purple-400 uppercase font-semibold">{userRole}</span>
+                        <span className="text-xs text-purple-400 uppercase font-semibold">Member</span>
                       </div>
                     </div>
                     <button
@@ -142,20 +134,20 @@ export default function Navbar() {
             {user ? (
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-lg">
-                  {user.google_user_data.picture ? (
+                  {avatarUrl ? (
                     <img 
-                      src={user.google_user_data.picture} 
-                      alt={user.google_user_data.name || 'User'} 
+                      src={avatarUrl} 
+                      alt={displayName} 
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
                     <User className="w-5 h-5" />
                   )}
                   <div>
-                    <p className="text-sm font-medium text-white">{user.google_user_data.name}</p>
+                    <p className="text-sm font-medium text-white">{displayName}</p>
                     <div className="flex items-center gap-1 mt-1">
                       <Shield className="w-3 h-3 text-purple-400" />
-                      <span className="text-xs text-purple-400 uppercase font-semibold">{userRole}</span>
+                      <span className="text-xs text-purple-400 uppercase font-semibold">Member</span>
                     </div>
                   </div>
                 </div>

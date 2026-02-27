@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { X, Truck, Shield, Loader2 } from "lucide-react";
-import { useAuth } from "@getmocha/users-service/react";
+import { useAuth } from "@/react-app/contexts/AuthContext";
 import Navbar from "@/react-app/components/Navbar";
 import Footer from "@/react-app/components/Footer";
 import { useCart } from "@/react-app/contexts/CartContext";
@@ -52,7 +52,7 @@ export default function Checkout() {
           amount: orderTotal.toFixed(2),
           item_name: `Online Streetwear Order (${cartItemCount} item${cartItemCount !== 1 ? "s" : ""})`,
           email: customerEmail,
-          name_first: user?.google_user_data?.given_name || "Customer",
+          name_first: user?.displayName?.split(" ")[0] || "Customer",
         }),
       });
 
