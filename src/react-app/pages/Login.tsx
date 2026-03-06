@@ -1,9 +1,21 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, LogIn, Mail, ShoppingBag, KeyRound, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LogIn,
+  Mail,
+  ShieldCheck,
+  ShoppingBag,
+  UserPlus,
+} from "lucide-react";
 import { useAuth } from "@/react-app/contexts/AuthContext";
 
 type LoginMethod = "google" | "email";
+type AuthMode = "signin" | "signup";
 
 function getFirebaseAuthMessage(error: unknown): string {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
@@ -16,19 +28,25 @@ function getFirebaseAuthMessage(error: unknown): string {
     case "auth/wrong-password":
       return "Invalid email or password.";
     case "auth/email-already-in-use":
-      return "This email is already registered. Sign in instead.";
+      return "This email is already registered. Choose Sign In instead.";
     case "auth/weak-password":
       return "Use a stronger password (at least 6 characters).";
+    case "auth/missing-password":
+      return "Please enter a password.";
     case "auth/popup-blocked":
       return "Popup was blocked. Allow popups and try again.";
     case "auth/popup-closed-by-user":
       return "Google sign-in was closed before completion.";
+    case "auth/unauthorized-domain":
+      return "This domain is not authorized in Firebase. Add your Netlify domain in Firebase Authentication > Settings > Authorized domains.";
     case "auth/operation-not-allowed":
       return "This sign-in method is not enabled in Firebase Authentication.";
     case "auth/network-request-failed":
       return "Network error. Check your internet connection and retry.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a moment and try again.";
     default:
-      return "Sign-in failed. Please try again.";
+      return "Authentication failed. Please try again.";
   }
 }
 
@@ -36,11 +54,14 @@ export default function Login() {
   const { user, isPending, isConfigured, redirectToLogin, loginWithEmail, registerWithEmail } = useAuth();
   const navigate = useNavigate();
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("google");
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
-  const [isCreateAccount, setIsCreateAccount] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
 
   useEffect(() => {
@@ -49,9 +70,17 @@ export default function Login() {
     }
   }, [user, isPending, navigate]);
 
+  const switchMode = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setEmailMessage("");
+    if (mode === "signin") {
+      setConfirmPassword("");
+    }
+  };
+
   const handleGoogleLogin = async () => {
     if (!isConfigured) {
-      setEmailMessage("Firebase is not configured yet. Add API key and app ID in .env.local.");
+      setEmailMessage("Firebase auth is not configured yet. Add VITE_FIREBASE_* variables and redeploy.");
       return;
     }
 
@@ -72,12 +101,23 @@ export default function Login() {
     event.preventDefault();
 
     if (!isConfigured) {
-      setEmailMessage("Firebase is not configured yet. Add API key and app ID in .env.local.");
+      setEmailMessage("Firebase auth is not configured yet. Add VITE_FIREBASE_* variables and redeploy.");
       return;
     }
 
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || !password.trim()) {
       setEmailMessage("Enter your email and password to continue.");
+      return;
+    }
+
+    if (authMode === "signup" && password.length < 6) {
+      setEmailMessage("Use at least 6 characters for your password.");
+      return;
+    }
+
+    if (authMode === "signup" && password !== confirmPassword) {
+      setEmailMessage("Password confirmation does not match.");
       return;
     }
 
@@ -85,10 +125,10 @@ export default function Login() {
     setIsEmailLoading(true);
 
     try {
-      if (isCreateAccount) {
-        await registerWithEmail(email.trim(), password);
+      if (authMode === "signup") {
+        await registerWithEmail(trimmedEmail, password);
       } else {
-        await loginWithEmail(email.trim(), password);
+        await loginWithEmail(trimmedEmail, password);
       }
     } catch (error) {
       console.error("Email authentication failed:", error);
@@ -100,83 +140,119 @@ export default function Login() {
 
   if (isPending) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
         <div className="animate-pulse text-lg tracking-wide">Loading account...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(239,68,68,0.28),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(153,27,27,0.35),transparent_35%),linear-gradient(to_bottom,rgba(0,0,0,0.86),#000)]" />
+    <div className="relative min-h-screen overflow-hidden bg-zinc-950 text-white">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(249,115,22,0.25),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(220,38,38,0.22),transparent_30%),radial-gradient(circle_at_85%_85%,rgba(59,130,246,0.16),transparent_35%),linear-gradient(170deg,#09090b_25%,#0a0a0a_60%,#030303_100%)]" />
 
-      <div className="relative min-h-screen grid lg:grid-cols-2">
-        <section className="hidden lg:flex flex-col justify-center px-10 xl:px-20">
-          <p className="text-sm uppercase tracking-[0.35em] text-red-400 mb-5">Online Streetwear</p>
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-7xl gap-8 px-4 py-8 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14 lg:px-12 lg:py-10">
+        <section className="flex flex-col justify-center">
+          <p className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-orange-300/30 bg-orange-300/10 px-4 py-1.5 text-xs uppercase tracking-[0.3em] text-orange-200">
+            <span className="h-2 w-2 rounded-full bg-orange-300" />
+            Online Streetwear
+          </p>
+
           <h1
-            className="text-7xl xl:text-8xl leading-[0.9] tracking-tighter mb-6"
+            className="mb-5 text-5xl leading-[0.9] tracking-tight sm:text-6xl lg:text-8xl"
             style={{ fontFamily: "Anton, sans-serif" }}
           >
-            WELCOME
+            STAY READY
             <br />
-            BACK
+            FOR THE NEXT DROP
           </h1>
-          <p className="text-gray-300 max-w-md text-lg leading-relaxed mb-8">
-            Sign in to track orders, save your cart, and access new drops first.
+
+          <p className="mb-8 max-w-xl text-base text-zinc-300 sm:text-lg">
+            Sign in to track orders, save your cart, and get access to exclusive launches before public release.
           </p>
-          <div className="space-y-4 max-w-sm">
-            <div className="flex items-center gap-3 text-sm text-gray-300">
-              <ShieldCheck className="w-5 h-5 text-red-400" />
-              Secure sessions and checkout history
+
+          <div className="grid gap-3 sm:max-w-lg">
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
+              <ShieldCheck className="h-4 w-4 text-orange-300" />
+              Secure sessions and order history
             </div>
-            <div className="flex items-center gap-3 text-sm text-gray-300">
-              <ShieldCheck className="w-5 h-5 text-red-400" />
-              Faster checkout with saved details
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
+              <ShieldCheck className="h-4 w-4 text-orange-300" />
+              Fast checkout with saved details
             </div>
-            <div className="flex items-center gap-3 text-sm text-gray-300">
-              <ShieldCheck className="w-5 h-5 text-red-400" />
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
+              <ShieldCheck className="h-4 w-4 text-orange-300" />
               Early access to limited collections
             </div>
           </div>
         </section>
 
-        <section className="flex items-center justify-center p-4 sm:p-8">
-          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-neutral-950/80 backdrop-blur-xl shadow-2xl p-6 sm:p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-11 h-11 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center">
-                <ShoppingBag className="w-6 h-6 text-red-400" />
+        <section className="flex items-center justify-center">
+          <div className="w-full max-w-xl rounded-3xl border border-white/15 bg-zinc-900/70 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl sm:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-orange-300/35 bg-orange-300/10">
+                  <ShoppingBag className="h-5 w-5 text-orange-200" />
+                </div>
+                <div>
+                  <h2 className="text-3xl leading-none" style={{ fontFamily: "Anton, sans-serif" }}>
+                    {authMode === "signup" ? "CREATE ACCOUNT" : "SIGN IN"}
+                  </h2>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {authMode === "signup"
+                      ? "New here? Start your account in under a minute."
+                      : "Welcome back. Pick how you want to continue."}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-2xl sm:text-3xl leading-none" style={{ fontFamily: "Anton, sans-serif" }}>
-                  SIGN IN
-                </h2>
-                <p className="text-xs text-gray-400 mt-1">Choose your preferred login method</p>
-              </div>
+              {authMode === "signup" && (
+                <span className="rounded-full border border-green-300/25 bg-green-300/10 px-3 py-1 text-xs font-medium text-green-200">
+                  First-time user
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 p-1 mb-6 rounded-xl border border-white/10 bg-white/5">
+            <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
               <button
+                type="button"
+                onClick={() => switchMode("signin")}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  authMode === "signin" ? "bg-white text-zinc-900" : "text-zinc-300 hover:bg-white/10"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("signup")}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  authMode === "signup" ? "bg-white text-zinc-900" : "text-zinc-300 hover:bg-white/10"
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/25 p-1">
+              <button
+                type="button"
                 onClick={() => {
                   setLoginMethod("google");
                   setEmailMessage("");
                 }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  loginMethod === "google"
-                    ? "bg-red-500 text-white"
-                    : "text-gray-300 hover:bg-white/10"
+                  loginMethod === "google" ? "bg-orange-400 text-zinc-950" : "text-zinc-300 hover:bg-white/10"
                 }`}
               >
                 Google
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setLoginMethod("email");
                   setEmailMessage("");
                 }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                  loginMethod === "email"
-                    ? "bg-red-500 text-white"
-                    : "text-gray-300 hover:bg-white/10"
+                  loginMethod === "email" ? "bg-orange-400 text-zinc-950" : "text-zinc-300 hover:bg-white/10"
                 }`}
               >
                 Email
@@ -184,92 +260,132 @@ export default function Login() {
             </div>
 
             {loginMethod === "google" ? (
-              <div>
+              <div className="space-y-3">
                 <button
                   onClick={handleGoogleLogin}
-                  disabled={isRedirecting || !isConfigured}
-                  className="w-full flex items-center justify-center gap-3 bg-red-500 hover:bg-red-600 disabled:bg-red-400 text-white font-semibold py-3.5 px-5 rounded-xl transition"
+                  disabled={isRedirecting}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-orange-400 px-5 py-3.5 font-semibold text-zinc-950 transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-orange-300/60"
                 >
                   {isRedirecting ? (
                     "Redirecting..."
+                  ) : authMode === "signup" ? (
+                    <>
+                      <UserPlus className="h-5 w-5" />
+                      Continue with Google (Sign Up)
+                    </>
                   ) : (
                     <>
-                      <LogIn className="w-5 h-5" />
+                      <LogIn className="h-5 w-5" />
                       Continue with Google
                     </>
                   )}
                 </button>
-                <p className="text-xs text-gray-400 text-center mt-3">
-                  {isConfigured
-                    ? "Recommended for fastest sign-in."
-                    : "Complete Firebase Web SDK setup in .env.local to enable sign-in."}
+                <p className="text-center text-xs text-zinc-400">
+                  {authMode === "signup"
+                    ? "Google can create your account automatically on first login."
+                    : "Fastest way to sign in and sync your account."}
                 </p>
               </div>
             ) : (
               <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">Email</label>
+                  <label className="mb-2 block text-sm text-zinc-300">Email address</label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                     <input
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="you@example.com"
-                      className="w-full bg-black/40 border border-white/15 rounded-lg px-10 py-3 focus:outline-none focus:border-red-500"
+                      className="w-full rounded-xl border border-white/15 bg-black/35 px-10 py-3 text-white placeholder:text-zinc-500 focus:border-orange-300 focus:outline-none"
                     />
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">Password</label>
+                  <label className="mb-2 block text-sm text-zinc-300">Password</label>
                   <div className="relative">
-                    <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Enter your password"
-                      className="w-full bg-black/40 border border-white/15 rounded-lg px-10 py-3 focus:outline-none focus:border-red-500"
+                      placeholder={authMode === "signup" ? "Create a password" : "Enter your password"}
+                      className="w-full rounded-xl border border-white/15 bg-black/35 px-10 py-3 pr-11 text-white placeholder:text-zinc-500 focus:border-orange-300 focus:outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 transition hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
+
+                {authMode === "signup" && (
+                  <div>
+                    <label className="mb-2 block text-sm text-zinc-300">Confirm password</label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        placeholder="Repeat your password"
+                        className="w-full rounded-xl border border-white/15 bg-black/35 px-10 py-3 pr-11 text-white placeholder:text-zinc-500 focus:border-orange-300 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((current) => !current)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 transition hover:text-white"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={isEmailLoading || !isConfigured}
-                  className="w-full bg-red-500 hover:bg-red-600 disabled:bg-red-400 text-white font-semibold py-3.5 px-5 rounded-xl transition"
+                  disabled={isEmailLoading}
+                  className="w-full rounded-xl bg-orange-400 px-5 py-3.5 font-semibold text-zinc-950 transition hover:bg-orange-300 disabled:cursor-not-allowed disabled:bg-orange-300/60"
                 >
-                  {isEmailLoading ? "Please wait..." : isCreateAccount ? "Create Account" : "Continue with Email"}
+                  {isEmailLoading
+                    ? "Please wait..."
+                    : authMode === "signup"
+                      ? "Create account with email"
+                      : "Continue with email"}
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsCreateAccount((current) => !current);
-                    setEmailMessage("");
-                  }}
-                  className="w-full text-sm text-gray-300 hover:text-white transition"
+                  onClick={() => switchMode(authMode === "signup" ? "signin" : "signup")}
+                  className="w-full text-sm text-zinc-300 transition hover:text-white"
                 >
-                  {isCreateAccount ? "Already have an account? Sign in" : "Need an account? Create one"}
+                  {authMode === "signup" ? "Already have an account? Switch to Sign In" : "First time here? Create an account"}
                 </button>
               </form>
             )}
 
             {emailMessage && (
-              <p className="text-sm text-amber-300 mt-4 text-center">
-                {emailMessage}
-              </p>
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200/20 bg-amber-300/10 px-3 py-2 text-sm text-amber-200">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{emailMessage}</p>
+              </div>
             )}
 
-            <div className="mt-7 pt-5 border-t border-white/10">
-              <p className="text-center text-xs text-gray-400">
-                By signing in, you agree to our Terms of Service and Privacy Policy.
+            <div className="mt-7 border-t border-white/10 pt-5">
+              <p className="text-center text-xs text-zinc-400">
+                By continuing, you agree to our Terms of Service and Privacy Policy.
               </p>
             </div>
 
             <button
               onClick={() => navigate("/")}
-              className="mt-6 flex items-center justify-center gap-2 w-full text-sm text-gray-300 hover:text-white transition"
+              className="mt-5 flex w-full items-center justify-center gap-2 text-sm text-zinc-300 transition hover:text-white"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="h-4 w-4" />
               Back to Home
             </button>
           </div>
