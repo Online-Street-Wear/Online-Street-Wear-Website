@@ -31,13 +31,13 @@
     "tailwindcss": "^3.4.17",
     "typescript": "5.8.3",
     "typescript-eslint": "8.31.0",
-    "vite": "^7.1.3",
+    "vite": "^6.4.1",
     "wrangler": "^4.33.0"
   },
   "scripts": {
-    "build": "tsc -b && vite build",
+    "build": "npm run cf-typegen && tsc -b && vite build",
     "cf-typegen": "wrangler types",
-    "check": "tsc && vite build && wrangler deploy --dry-run",
+    "check": "npm run cf-typegen && tsc && vite build && wrangler deploy --dry-run",
     "dev": "vite",
     "lint": "eslint ."
   }
