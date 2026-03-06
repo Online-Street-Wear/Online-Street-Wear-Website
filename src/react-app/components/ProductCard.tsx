@@ -1,3 +1,5 @@
+import { getAlternateStorageUrl } from "@/react-app/lib/assets";
+
 interface ProductCardProps {
   image: string;
   name: string;
@@ -7,12 +9,28 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ image, name, price, category, onClick }: ProductCardProps) {
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const imageElement = event.currentTarget;
+    if (imageElement.dataset.fallbackTried === "1") {
+      return;
+    }
+
+    const currentSrc = imageElement.src;
+    const alternateSrc = getAlternateStorageUrl(currentSrc);
+
+    if (alternateSrc && currentSrc !== alternateSrc) {
+      imageElement.dataset.fallbackTried = "1";
+      imageElement.src = alternateSrc;
+    }
+  };
+
   return (
     <div className="group cursor-pointer" onClick={onClick}>
       <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-900 mb-4">
         <img 
           src={image} 
           alt={name}
+          onError={handleImageError}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

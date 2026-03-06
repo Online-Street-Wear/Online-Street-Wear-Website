@@ -1,6 +1,7 @@
 import { X, ShoppingBag, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useCart } from '@/react-app/contexts/CartContext';
+import { getAlternateStorageUrl } from '@/react-app/lib/assets';
 
 interface ProductModalProps {
   image: string;
@@ -13,6 +14,21 @@ interface ProductModalProps {
 export default function ProductModal({ image, name, price, category, onClose }: ProductModalProps) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
+
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const imageElement = event.currentTarget;
+    if (imageElement.dataset.fallbackTried === "1") {
+      return;
+    }
+
+    const currentSrc = imageElement.src;
+    const alternateSrc = getAlternateStorageUrl(currentSrc);
+
+    if (alternateSrc && currentSrc !== alternateSrc) {
+      imageElement.dataset.fallbackTried = "1";
+      imageElement.src = alternateSrc;
+    }
+  };
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -52,6 +68,7 @@ export default function ProductModal({ image, name, price, category, onClose }: 
             <img 
               src={image} 
               alt={name}
+              onError={handleImageError}
               className="w-full h-full object-contain p-4 sm:p-8"
             />
           </div>

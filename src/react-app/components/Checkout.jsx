@@ -5,6 +5,7 @@ import { useAuth } from "@/react-app/contexts/AuthContext";
 import Navbar from "@/react-app/components/Navbar";
 import Footer from "@/react-app/components/Footer";
 import { useCart } from "@/react-app/contexts/CartContext";
+import { getAlternateStorageUrl } from "@/react-app/lib/assets";
 import {
   FREE_SHIPPING_THRESHOLD,
   SHIPPING_PROVINCE_OPTIONS,
@@ -19,6 +20,21 @@ export default function Checkout() {
   const [shippingProvince, setShippingProvince] = useState(SHIPPING_PROVINCE_OPTIONS[0].value);
   const [email, setEmail] = useState("");
   const [paymentError, setPaymentError] = useState("");
+
+  const handleImageError = (event) => {
+    const imageElement = event.currentTarget;
+    if (imageElement.dataset.fallbackTried === "1") {
+      return;
+    }
+
+    const currentSrc = imageElement.src;
+    const alternateSrc = getAlternateStorageUrl(currentSrc);
+
+    if (alternateSrc && currentSrc !== alternateSrc) {
+      imageElement.dataset.fallbackTried = "1";
+      imageElement.src = alternateSrc;
+    }
+  };
 
   const subtotal = getTotal();
   const cartItemCount = getItemCount();
@@ -145,7 +161,12 @@ export default function Checkout() {
                       <article key={item.id} className="border border-border rounded-lg p-4">
                         <div className="flex flex-col sm:flex-row gap-4">
                           <div className="w-full sm:w-28 h-40 sm:h-28 bg-background rounded-lg border border-border overflow-hidden flex-shrink-0">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-contain p-2" />
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              onError={handleImageError}
+                              className="w-full h-full object-contain p-2"
+                            />
                           </div>
 
                           <div className="flex-1 flex flex-col justify-between">

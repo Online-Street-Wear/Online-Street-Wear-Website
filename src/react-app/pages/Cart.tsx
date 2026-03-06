@@ -5,6 +5,7 @@ import Navbar from '@/react-app/components/Navbar';
 import Footer from '@/react-app/components/Footer';
 import { useCart } from '@/react-app/contexts/CartContext';
 import { FREE_SHIPPING_THRESHOLD } from '@/react-app/config/shipping';
+import { getAlternateStorageUrl } from '@/react-app/lib/assets';
 
 export default function Cart() {
   const { items, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
@@ -12,6 +13,21 @@ export default function Cart() {
   const [errorMessage, setErrorMessage] = useState('');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const imageElement = event.currentTarget;
+    if (imageElement.dataset.fallbackTried === '1') {
+      return;
+    }
+
+    const currentSrc = imageElement.src;
+    const alternateSrc = getAlternateStorageUrl(currentSrc);
+
+    if (alternateSrc && currentSrc !== alternateSrc) {
+      imageElement.dataset.fallbackTried = '1';
+      imageElement.src = alternateSrc;
+    }
+  };
 
   useEffect(() => {
     // Check if returning from successful checkout
@@ -133,6 +149,7 @@ export default function Cart() {
                       <img 
                         src={item.image} 
                         alt={item.name}
+                        onError={handleImageError}
                         className="w-full h-full object-contain p-2"
                       />
                     </div>

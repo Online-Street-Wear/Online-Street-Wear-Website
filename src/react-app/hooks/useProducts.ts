@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { allProducts as fallbackProducts, Product } from "@/react-app/data/products";
 import { db, isFirebaseConfigured } from "@/react-app/lib/firebase";
+import { resolveProductImage } from "@/react-app/lib/assets";
 
 type ProductSource = "firebase" | "fallback";
 
@@ -41,7 +42,7 @@ function toProduct(docId: string, record: ProductRecord): Product | null {
 
   return {
     id: docId,
-    image: record.image,
+    image: resolveProductImage(record.image),
     name: record.name,
     price,
     category: record.category,
