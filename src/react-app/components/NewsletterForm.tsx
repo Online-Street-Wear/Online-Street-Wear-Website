@@ -1,14 +1,15 @@
-import { useState, FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 
 export default function NewsletterForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const inputId = useId();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!email) {
+    if (!email.trim()) {
       setStatus('error');
       setMessage('Please enter your email address');
       return;
@@ -23,7 +24,8 @@ export default function NewsletterForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
+        signal: AbortSignal.timeout(15_000),
       });
 
       const data = await response.json();
@@ -34,7 +36,7 @@ export default function NewsletterForm() {
         setEmail('');
       } else {
         setStatus('error');
-        setMessage(data.message || 'Failed to subscribe');
+        setMessage(data.message || data.error || 'We could not save your subscription. Please try again.');
       }
     } catch {
       setStatus('error');
@@ -45,25 +47,30 @@ export default function NewsletterForm() {
   return (
     <div>
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto mb-4">
+        <label htmlFor={inputId} className="sr-only">Newsletter email address</label>
         <input 
+          id={inputId}
           type="email"
+          autoComplete="email"
+          required
+          maxLength={254}
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={status === 'loading'}
-          className="flex-1 px-6 py-4 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-red-500 transition disabled:opacity-50"
+          className="min-w-0 flex-1 px-6 py-4 bg-muted border border-border rounded-lg focus:outline-none focus:border-red-500 transition disabled:opacity-50"
         />
         <button 
           type="submit"
           disabled={status === 'loading'}
-          className="px-8 py-4 bg-red-500 hover:bg-red-600 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-8 py-4 bg-red-500 text-white hover:bg-red-600 font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
         </button>
       </form>
       
       {message && (
-        <p className={`text-center text-sm ${status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+        <p role={status === 'error' ? 'alert' : 'status'} className={`text-center text-sm ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
           {message}
         </p>
       )}

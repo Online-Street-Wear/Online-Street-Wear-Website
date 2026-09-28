@@ -1,0 +1,22 @@
+# Local server settings. Copy missing settings into .dev.vars and restart npm run dev.
+# Empty values below are placeholders. Never commit real credentials.
+
+# Paystack dashboard secret key: sk_test_... for testing, sk_live_... for real payments.
+PAYSTACK_SECRET_KEY=
+PAYSTACK_CURRENCY=ZAR
+SITE_URL=http://localhost:5173
+
+# Match the frontend VITE_FIREBASE_PROJECT_ID when changing Firebase projects.
+FIREBASE_PROJECT_ID=online-street-wear
+
+# Set a private, randomly generated value of at least 32 characters.
+ORDER_ADMIN_TOKEN=
+
+# Configure both for customer and owner order emails. Verify the sender domain in Resend.
+RESEND_API_KEY=
+ORDER_FROM_EMAIL=
+# Store owner's notification inbox (one email address, no display name).
+ORDER_OWNER_EMAIL=
+
+# Optional local SQLite path, relative to this inner project folder.
+ORDER_DB_PATH=.data/orders.sqlite

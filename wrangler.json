@@ -3,12 +3,15 @@
   "name": "019c1e24-d157-7eef-b710-fc72a1496dba",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2025-06-17",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "observability": {
     "enabled": true
   },
   "upload_source_maps": true,
   "assets": {
+    "directory": "dist",
     "not_found_handling": "single-page-application"
   },
   "d1_databases": [
@@ -23,5 +26,10 @@
       "binding": "R2_BUCKET",
       "bucket_name": "019c1e24-d157-7eef-b710-fc72a1496dba"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  }
 }

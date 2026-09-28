@@ -1,179 +1,113 @@
-import { Menu, ShoppingBag, X, User, LogOut, Shield, Sun, Moon } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Menu, ShoppingBag, X, User, LogOut, Sun, Moon, Heart } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '@/react-app/contexts/AuthContext';
 import { useCart } from '@/react-app/contexts/CartContext';
+import { useSavedProducts } from '@/react-app/contexts/SavedProductsContext';
 import { useTheme } from '@/react-app/contexts/ThemeContext';
+
+const links = [
+  { to: '/', label: 'Home' },
+  { to: '/products', label: 'Shop' },
+  { to: '/track-order', label: 'Track Order' },
+  { to: '/help', label: 'Shipping & Help' },
+];
+const iconClass = 'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLButtonElement>(null);
+  const accountRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const isHome = location.pathname === '/';
   const { user, logout } = useAuth();
   const { getItemCount } = useCart();
+  const { savedIds } = useSavedProducts();
   const { theme, toggleTheme } = useTheme();
-  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'User';
-  const firstName = displayName.split(' ')[0] || 'User';
-  const avatarUrl = user?.photoURL || '';
+  const count = getItemCount();
+  const displayName = user?.displayName?.trim() || user?.email?.split('@')[0] || 'Your account';
 
-  const handleLogout = async () => {
-    await logout();
+  useEffect(() => {
+    setIsMenuOpen(false);
     setIsUserMenuOpen(false);
-    navigate('/');
-  };
+  }, [location.pathname, location.hash]);
 
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="text-2xl font-bold tracking-tighter" style={{ fontFamily: 'Anton, sans-serif' }}>
-              ONLINE<span className="text-red-500">.</span>
-            </div>
-            <div className="hidden sm:block text-xs text-gray-400 mt-1">EST. 2021</div>
-          </Link>
+  useEffect(() => {
+    if (!isMenuOpen && !isUserMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !navRef.current?.contains(event.target)) {
+        setIsMenuOpen(false); setIsUserMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (isUserMenuOpen) accountRef.current?.focus();
+      else menuRef.current?.focus();
+      setIsMenuOpen(false); setIsUserMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMenuOpen, isUserMenuOpen]);
 
-          <div className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-sm font-medium text-white hover:text-red-500 transition">Home</Link>
-            <Link to="/products" className="text-sm font-medium text-white hover:text-red-500 transition">All Products</Link>
-            {isHome && <a href="#about" className="text-sm font-medium text-white hover:text-red-500 transition">About</a>}
-            {isHome && <a href="#contact" className="text-sm font-medium text-white hover:text-red-500 transition">Contact</a>}
-            
-            <button 
-              onClick={toggleTheme}
-              className="p-2 hover:bg-white/10 rounded-lg transition"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            
-            <Link to="/cart" className="p-2 hover:bg-white/10 rounded-lg transition relative">
-              <ShoppingBag className="w-5 h-5" />
-              {getItemCount() > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {getItemCount()}
-                </span>
-              )}
-            </Link>
+  async function handleLogout() {
+    setLoggingOut(true); setLogoutError('');
+    try { await logout(); setIsUserMenuOpen(false); navigate('/'); }
+    catch { setLogoutError('We could not sign you out. Please try again.'); }
+    finally { setLoggingOut(false); }
+  }
 
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition"
-                >
-                  {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt={displayName} 
-                      className="w-6 h-6 rounded-full"
-                    />
-                  ) : (
-                    <User className="w-5 h-5" />
-                  )}
-                  <span className="text-sm font-medium">{firstName}</span>
-                </button>
-
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-black/95 backdrop-blur-lg rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-white/10">
-                      <p className="text-sm font-medium text-white">{displayName}</p>
-                      <p className="text-xs text-gray-400 mt-1">{user.email || 'No email available'}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Shield className="w-3 h-3 text-purple-400" />
-                        <span className="text-xs text-purple-400 uppercase font-semibold">Member</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition flex items-center gap-2"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-sm font-semibold transition-all"
-              >
-                Sign In
-              </Link>
-            )}
-          </div>
-
-          <button 
-            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
+  return <nav ref={navRef} aria-label="Main navigation" className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-black/95 text-white backdrop-blur-md">
+    <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8">
+      <Link to="/" aria-label="ONLINE Streetwear home" className="shrink-0 text-2xl font-bold tracking-tighter" style={{ fontFamily: 'Anton, sans-serif' }}>ONLINE<span className="text-red-500">.</span></Link>
+      <div className="hidden items-center gap-5 lg:flex">
+        {links.map(link => <NavLink key={link.to} to={link.to} end={link.to === '/'} className={({ isActive }) => `rounded-sm py-2 text-sm font-medium transition hover:text-red-400 ${isActive ? 'text-red-400' : 'text-white'}`}>{link.label}</NavLink>)}
       </div>
-
-      {isMenuOpen && (
-        <div className="md:hidden bg-black border-t border-white/10">
-          <div className="px-4 py-4 space-y-4">
-            <Link to="/" className="block text-sm font-medium text-white hover:text-red-500 transition" onClick={() => setIsMenuOpen(false)}>Home</Link>
-            <Link to="/products" className="block text-sm font-medium text-white hover:text-red-500 transition" onClick={() => setIsMenuOpen(false)}>All Products</Link>
-            {isHome && <a href="#about" className="block text-sm font-medium text-white hover:text-red-500 transition" onClick={() => setIsMenuOpen(false)}>About</a>}
-            {isHome && <a href="#contact" className="block text-sm font-medium text-white hover:text-red-500 transition" onClick={() => setIsMenuOpen(false)}>Contact</a>}
-            
-            <button
-              onClick={toggleTheme}
-              className="flex items-center gap-2 text-sm font-medium text-white hover:text-red-500 transition"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-            </button>
-            
-            {user ? (
-              <div className="pt-4 border-t border-white/10 space-y-3">
-                <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-lg">
-                  {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt={displayName} 
-                      className="w-8 h-8 rounded-full"
-                    />
-                  ) : (
-                    <User className="w-5 h-5" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-white">{displayName}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Shield className="w-3 h-3 text-purple-400" />
-                      <span className="text-xs text-purple-400 uppercase font-semibold">Member</span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 text-sm font-medium text-white hover:text-red-500 transition"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="block px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-sm font-semibold text-center transition-all"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign In
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
-    </nav>
-  );
+      <div className="flex items-center gap-0 sm:gap-1">
+        <button type="button" onClick={toggleTheme} className={`${iconClass} hidden sm:flex`} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
+          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </button>
+        <Link to="/saved" className={iconClass} aria-label={`Saved picks, ${savedIds.length} items`}>
+          <Heart className={`h-5 w-5 ${location.pathname === '/saved' ? 'fill-red-500 text-red-500' : ''}`} />
+          {savedIds.length > 0 && <span aria-hidden="true" className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold">{savedIds.length > 99 ? '99+' : savedIds.length}</span>}
+        </Link>
+        <Link to="/cart" className={iconClass} aria-label={`Shopping bag, ${count} items`}>
+          <ShoppingBag className="h-5 w-5" />
+          {count > 0 && <span aria-hidden="true" className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold">{count > 99 ? '99+' : count}</span>}
+        </Link>
+        {user ? <div className="relative">
+          <button ref={accountRef} type="button" aria-label={`Account for ${displayName}`} aria-expanded={isUserMenuOpen} aria-controls="account-navigation"
+            onClick={() => { setIsUserMenuOpen(current => !current); setIsMenuOpen(false); }} className={iconClass}>
+            {user.photoURL ? <img src={user.photoURL} alt="" className="h-7 w-7 rounded-full" /> : <User className="h-5 w-5" />}
+          </button>
+          {isUserMenuOpen && <div id="account-navigation" className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-white/15 bg-black p-4 shadow-2xl">
+            <p className="break-words font-semibold">{displayName}</p>
+            <p className="mt-1 break-all text-xs text-gray-400">{user.email}</p>
+            <Link to="/saved" className="mt-4 block rounded-lg py-2 text-sm hover:text-red-400" onClick={() => setIsUserMenuOpen(false)}>Saved picks</Link>
+            <Link to="/track-order" className="block rounded-lg py-2 text-sm hover:text-red-400" onClick={() => setIsUserMenuOpen(false)}>Track an order</Link>
+            <button type="button" onClick={() => void handleLogout()} disabled={loggingOut} className="mt-3 flex w-full items-center gap-2 border-t border-white/10 pt-4 text-sm hover:text-red-400 disabled:opacity-50"><LogOut className="h-4 w-4" />{loggingOut ? 'Signing out…' : 'Sign out'}</button>
+            {logoutError && <p role="alert" className="mt-3 text-sm text-red-400">{logoutError}</p>}
+          </div>}
+        </div> : <Link to="/login" className={iconClass} aria-label="Sign in"><User className="h-5 w-5" /><span className="sr-only">Sign in</span></Link>}
+        <button ref={menuRef} type="button" className={`${iconClass} lg:hidden`} aria-label={isMenuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={isMenuOpen} aria-controls="mobile-navigation"
+          onClick={() => { setIsMenuOpen(current => !current); setIsUserMenuOpen(false); }}>
+          {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
+    </div>
+    {isMenuOpen && <div id="mobile-navigation" className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-black px-4 py-4 lg:hidden">
+      {links.map(link => <NavLink key={link.to} to={link.to} end={link.to === '/'} onClick={() => setIsMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-3 text-sm font-medium ${isActive ? 'bg-red-500/10 text-red-400' : 'hover:bg-white/10'}`}>{link.label}</NavLink>)}
+      <Link to="/saved" onClick={() => setIsMenuOpen(false)} className="block rounded-lg px-3 py-3 text-sm hover:bg-white/10">Saved picks ({savedIds.length})</Link>
+      <button type="button" onClick={toggleTheme} className="mt-3 flex w-full items-center gap-3 border-t border-white/10 px-3 pt-5 text-sm">
+        {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />} {theme === 'dark' ? 'Light' : 'Dark'} mode
+      </button>
+    </div>}
+  </nav>;
 }
